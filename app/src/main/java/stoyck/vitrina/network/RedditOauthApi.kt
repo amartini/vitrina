@@ -15,10 +15,11 @@ interface RedditOauthApi {
         @Path("subreddit") subreddit: String
     ): RedditAboutPage
 
-    @GET("/r/{subreddit}.json")
+    @GET("/r/{subreddit}/new")
     suspend fun getPosts(
         @Path("subreddit") subreddit: String,
-        @Query("limit") limit: Int? = null
+        @Query("limit") limit: Int? = null,
+        @Query("after") after: String? = null
     ): RedditPostPage
 
     @POST("/api/search_subreddits.json")

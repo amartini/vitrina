@@ -5,7 +5,7 @@ import stoyck.vitrina.MainActivity
 import stoyck.vitrina.di.modules.NetworkModule
 import stoyck.vitrina.muzei.VitrinaArtWorker
 import stoyck.vitrina.muzei.VitrinaCommandReceiver
-import stoyck.vitrina.muzei.commands.ArtworkSaveWorker
+import stoyck.vitrina.muzei.commands.CommandReceivedWorker
 import javax.inject.Singleton
 
 @Singleton
@@ -20,7 +20,7 @@ interface ApplicationComponent {
 
     fun inject(worker: VitrinaArtWorker)
 
-    fun inject(worker: ArtworkSaveWorker)
+    fun inject(worker: CommandReceivedWorker)
 
     fun inject(receiver: VitrinaCommandReceiver)
 }

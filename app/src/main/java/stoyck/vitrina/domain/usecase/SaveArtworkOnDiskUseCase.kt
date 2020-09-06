@@ -12,6 +12,7 @@ import android.provider.MediaStore
 import android.util.Log
 import kotlinx.coroutines.delay
 import stoyck.vitrina.R
+import stoyck.vitrina.muzei.commands.CommandReceivedWorker
 import stoyck.vitrina.util.FileUtil
 import stoyck.vitrina.util.openPermissions
 import stoyck.vitrina.util.showToast
@@ -27,14 +28,6 @@ import javax.inject.Singleton
 class SaveArtworkOnDiskUseCase @Inject constructor(
     private val context: Context
 ) {
-
-    data class Params(
-        val existingFile: File,
-        val uri: Uri,
-        val title: String,
-        val byLine: String,
-        val attribution: String
-    )
 
     private fun showSavedImage(uri: Uri) {
         val intent = Intent()
@@ -103,7 +96,7 @@ class SaveArtworkOnDiskUseCase @Inject constructor(
         }
     }
 
-    suspend operator fun invoke(params: Params) {
+    suspend operator fun invoke(params: CommandReceivedWorker.Params) {
         // It seems that below API 29 permission is always needed to modify anything on the drive
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             uiThread {

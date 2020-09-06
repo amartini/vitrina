@@ -47,18 +47,29 @@ class RedditService @Inject constructor(
         return page.data
     }
 
-    suspend fun retrievePosts(subreddits: List<String>): List<RedditPost> {
-        return retrievePosts(subreddits.joinToString(separator = "+"))
-    }
-
-    suspend fun retrievePosts(subreddit: String): List<RedditPost> {
+    suspend fun retrievePosts(subreddit: String, minVotes: Long, after: String?): Pair<List<RedditPost>, String?> {
         ensureBearerTokenExists()
         val result = oauthApi.getPosts(
             subreddit = subreddit,
-            limit = 100
+            limit = 100,
+            after = after
         )
 
-        return result.data.children.map { it.data }
+        return Pair(result.data.children.map { it.data }.filter { minVotes < it.score && !it.stickied }, result.data.after)
+    }
+
+    suspend fun retrievePosts(subreddit: String, minVotes: Long, minPosts: Int): List<RedditPost> {
+        ensureBearerTokenExists()
+
+        var (result, after) = retrievePosts(subreddit, minVotes,null)
+
+        while (result.size < minPosts) {
+            val (result2, after2) = retrievePosts(subreddit, minVotes, after)
+            result = result.plus(result2)
+            after = after2
+        }
+
+        return result
     }
 
     suspend fun retrieveHints(

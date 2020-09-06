@@ -11,6 +11,8 @@ object VitrinaProtocolConstants {
     const val KEY_ARTWORK_TITLE = "$PREFIX.ARTWORK_TITLE"
     const val KEY_ARTWORK_BYLINE = "$PREFIX.ARTWORK_BYLINE"
     const val KEY_ARTWORK_ATTRIBUTION = "$PREFIX.ARTWORK_ATTRIBUTION"
+    const val KEY_ARTWORK_ID = "$PREFIX.ARTWORK_ID"
 
     const val COMMAND_SAVE_KEY = "save"
+    const val COMMAND_HIDE_KEY = "hide"
 }

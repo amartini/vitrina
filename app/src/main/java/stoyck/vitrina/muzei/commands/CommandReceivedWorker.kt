@@ -1,6 +1,7 @@
 package stoyck.vitrina.muzei.commands
 
 import android.content.Context
+import android.net.Uri
 import android.widget.Toast
 import androidx.work.*
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -10,15 +11,27 @@ import kotlinx.coroutines.withContext
 import stoyck.vitrina.BuildConfig
 import stoyck.vitrina.R
 import stoyck.vitrina.VitrinaApplication
+import stoyck.vitrina.domain.usecase.HideArtworkUseCase
 import stoyck.vitrina.domain.usecase.SaveArtworkOnDiskUseCase
 import stoyck.vitrina.util.showToast
+import java.io.File
 import java.util.concurrent.Executors
 import javax.inject.Inject
 
-class ArtworkSaveWorker(
+class CommandReceivedWorker(
     context: Context,
     workerParameters: WorkerParameters
 ) : CoroutineWorker(context, workerParameters) {
+
+    data class Params(
+        val command: String,
+        val existingFile: File,
+        val uri: Uri,
+        val title: String,
+        val byLine: String,
+        val attribution: String,
+        val id: String?
+    )
 
     companion object {
         private const val KEY_PARAMS = "KEY_PARAMS"
@@ -31,11 +44,11 @@ class ArtworkSaveWorker(
         internal fun enqueueLoad(
             context: Context,
             gson: Gson,
-            params: SaveArtworkOnDiskUseCase.Params
+            params: Params
         ) {
             val workManager = WorkManager.getInstance(context)
             workManager.enqueue(
-                OneTimeWorkRequestBuilder<ArtworkSaveWorker>()
+                OneTimeWorkRequestBuilder<CommandReceivedWorker>()
                     .setInputData(
                         Data.Builder()
                             .putString(KEY_PARAMS, gson.toJson(params))
@@ -47,7 +60,10 @@ class ArtworkSaveWorker(
     }
 
     @Inject
-    lateinit var saveArtworkOnDiskUseCase: SaveArtworkOnDiskUseCase
+    lateinit var saveArtworkOnDisk: SaveArtworkOnDiskUseCase
+
+    @Inject
+    lateinit var hideArtwork: HideArtworkUseCase
 
     @Inject
     lateinit var gson: Gson
@@ -76,9 +92,12 @@ class ArtworkSaveWorker(
         }
 
         val params =
-            gson.fromJson(paramsRaw, SaveArtworkOnDiskUseCase.Params::class.java)
+            gson.fromJson(paramsRaw, Params::class.java)
 
-        saveArtworkOnDiskUseCase(params)
+        when(params.command) {
+            VitrinaProtocolConstants.COMMAND_SAVE_KEY -> saveArtworkOnDisk(params)
+            VitrinaProtocolConstants.COMMAND_HIDE_KEY -> hideArtwork(params.id)
+        }
 
         Result.success()
     }

@@ -9,11 +9,11 @@ import android.widget.Toast
 import com.google.android.apps.muzei.api.provider.Artwork
 import com.google.gson.Gson
 import stoyck.vitrina.BuildConfig
-import stoyck.vitrina.R
 import stoyck.vitrina.VitrinaApplication
-import stoyck.vitrina.domain.usecase.SaveArtworkOnDiskUseCase
-import stoyck.vitrina.muzei.commands.ArtworkSaveWorker
+import stoyck.vitrina.muzei.commands.CommandReceivedWorker
 import stoyck.vitrina.muzei.commands.VitrinaProtocolConstants
+import stoyck.vitrina.muzei.commands.VitrinaProtocolConstants.COMMAND_HIDE_KEY
+import stoyck.vitrina.muzei.commands.VitrinaProtocolConstants.COMMAND_SAVE_KEY
 import java.io.File
 import javax.inject.Inject
 
@@ -53,6 +53,7 @@ class VitrinaCommandReceiver : BroadcastReceiver() {
         val title = extras.getString(VitrinaProtocolConstants.KEY_ARTWORK_TITLE)
         val byLine = extras.getString(VitrinaProtocolConstants.KEY_ARTWORK_BYLINE)
         val attribution = extras.getString(VitrinaProtocolConstants.KEY_ARTWORK_ATTRIBUTION)
+        val id = extras.getString(VitrinaProtocolConstants.KEY_ARTWORK_ID)
 
         if (
             data == null ||
@@ -69,36 +70,26 @@ class VitrinaCommandReceiver : BroadcastReceiver() {
                 .show()
         }
 
-        when (action) {
-            VitrinaProtocolConstants.COMMAND_SAVE_KEY -> {
-                if (BuildConfig.DEBUG) {
-                    Toast.makeText(
-                        context,
-                        "Debug: " + context.getString(R.string.action_save_command_received),
-                        Toast.LENGTH_SHORT
-                    )
-                        .show()
-                }
-
-                ArtworkSaveWorker.enqueueLoad(
-                    context,
-                    gson,
-                    SaveArtworkOnDiskUseCase.Params(
-                        existingFile = data,
-                        uri = uri,
-                        attribution = attribution,
-                        title = title,
-                        byLine = byLine
-                    )
-                )
-            }
-        }
+        CommandReceivedWorker.enqueueLoad(
+            context,
+            gson,
+            CommandReceivedWorker.Params(
+                command = action,
+                existingFile = data,
+                uri = uri,
+                attribution = attribution,
+                title = title,
+                byLine = byLine,
+                id = id
+            )
+        )
     }
 
     companion object {
 
         enum class VitrinaCommand(val id: String) {
-            Save(VitrinaProtocolConstants.COMMAND_SAVE_KEY);
+            Save(COMMAND_SAVE_KEY),
+            Hide(COMMAND_HIDE_KEY);
         }
 
         fun createPendingIntent(
@@ -116,6 +107,7 @@ class VitrinaCommandReceiver : BroadcastReceiver() {
                 putExtra(VitrinaProtocolConstants.KEY_ARTWORK_TITLE, artwork.title)
                 putExtra(VitrinaProtocolConstants.KEY_ARTWORK_BYLINE, artwork.byline)
                 putExtra(VitrinaProtocolConstants.KEY_ARTWORK_ATTRIBUTION, artwork.attribution)
+                putExtra(VitrinaProtocolConstants.KEY_ARTWORK_ID, artwork.token)
             }
 
             return PendingIntent.getBroadcast(

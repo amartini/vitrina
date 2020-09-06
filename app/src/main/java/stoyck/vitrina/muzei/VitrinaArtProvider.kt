@@ -40,6 +40,16 @@ class VitrinaArtProvider : MuzeiArtProvider() {
                     artwork,
                     VitrinaCommandReceiver.Companion.VitrinaCommand.Save
                 )
+            ),
+            RemoteActionCompat(
+                IconCompat.createWithResource(context, R.drawable.ic_clear),
+                context.getString(R.string.action_hide_title),
+                context.getString(R.string.action_hide_description),
+                VitrinaCommandReceiver.createPendingIntent(
+                    context,
+                    artwork,
+                    VitrinaCommandReceiver.Companion.VitrinaCommand.Hide
+                )
             )
         )
     }

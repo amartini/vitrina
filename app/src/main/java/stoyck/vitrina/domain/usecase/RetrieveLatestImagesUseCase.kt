@@ -3,6 +3,8 @@ package stoyck.vitrina.domain.usecase
 import stoyck.vitrina.network.RedditService
 import stoyck.vitrina.network.data.PostHint
 import stoyck.vitrina.network.data.RedditPost
+import stoyck.vitrina.network.data.fullPostLink
+import stoyck.vitrina.persistence.data.PersistedPostData
 import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -10,34 +12,39 @@ import javax.inject.Singleton
 @Singleton
 class RetrieveLatestImagesUseCase @Inject constructor(
     private val loadPosts: LoadPostsUseCase,
+    private val loadHiddenPosts: LoadHiddenPostsUseCase,
     private val loadSettings: LoadSettingsUseCase,
     private val loadSubreddits: LoadSubredditsUseCase,
     private val reddit: RedditService
 ) {
 
-    suspend operator fun invoke(): List<RedditPost> {
-        // val previousPosts = loadPosts()
-        // val existingPostIds = previousPosts.map { it.id }.toSet()
+    private fun RedditPost.toPersistedPostData(): PersistedPostData {
+        return PersistedPostData(
+            token = id,
+            title = subredditNamePrefixed,
+            byline = title,
+            attribution = author,
+            persistentUri = url,
+            webUri = fullPostLink
+        )
+    }
+
+    suspend operator fun invoke(): List<PersistedPostData> {
+        val previousPosts = loadPosts()
+        val hiddenPosts = loadHiddenPosts()
+        val existingPostIds = previousPosts.map { it.token }.toSet()
 
         val subreddits = loadSubreddits()
-        val preferences = loadSettings()
-
-        val subredditNames = subreddits.map { it.name }
 
         val maxItems = 15 // Max number of images returned
         val itemsPerSubreddit = maxItems / subreddits.size
 
-        val posts = if (preferences.shuffle) {
-            reddit.retrievePosts(subredditNames)
-        } else {
-            subreddits.flatMap {
-                // Todo: rate limit these calls, or reddit will do it
-                reddit
-                    .retrievePosts(it.name)
-                    .filter { post -> it.minUpvoteCount < post.score && !post.stickied }
-                    .sortedByDescending { it.created } // sort before limiting
-                    .take (itemsPerSubreddit)
-            }
+        // todo: preferences.shuffle
+        val posts = subreddits.flatMap {
+            // Todo: rate limit these calls, or reddit will do it
+            reddit
+                .retrievePosts(it.name, it.minUpvoteCount, itemsPerSubreddit)
+                .filter { post -> it.minUpvoteCount < post.score && !post.stickied }
         }
 
         val minUpvoteCounts =
@@ -51,6 +58,8 @@ class RetrieveLatestImagesUseCase @Inject constructor(
             .asSequence()
             // for easy indexing
             .map { it.copy(subreddit = it.subreddit.toLowerCase(Locale.ROOT)) }
+            .filter { it.id !in existingPostIds }
+            .filter { it.id !in hiddenPosts }
             .filter {
                 val minUpvoteCount = minUpvoteCounts[it.subreddit] ?: return@filter false
                 return@filter minUpvoteCount < it.score
@@ -58,12 +67,10 @@ class RetrieveLatestImagesUseCase @Inject constructor(
             .filterImages()
             .sortedByDescending { it.created }
             .toList()
-            // Do not load too many images,
-            // Might be too much load in network for a single time
-            .take (maxItems)
+            .map { it.toPersistedPostData() }
 
         // use map so that it stops at the breakpoint
-        return images.map { it }
+        return images + previousPosts
     }
 
     private fun Sequence<RedditPost>.filterImages(): Sequence<RedditPost> {

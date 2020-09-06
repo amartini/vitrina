@@ -43,5 +43,7 @@ class VitrinaPersistence
 
     var subreddits by gsonPref(SUBREDDITS_KEY, INITIAL_SUBREDDITS)
 
-    var previousPosts by gsonPref<List<PersistedPostData>>("posts", emptyList())
+    var previousPosts by gsonPref<List<PersistedPostData>>("postsv", emptyList())
+
+    var hiddenPosts by gsonPref<List<String?>>("hiddenposts", emptyList())
 }
